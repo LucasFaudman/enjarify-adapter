@@ -1,0 +1,15 @@
+This product includes code from the following project(s) licensed under the Apache License 2.0:
+
+- Project: Enjarify
+- Original Copyright: ["2015 Google Inc.", "Robert Grosse / Storyyeller on github.com"]
+
+Modifications made to this code:
+- Rewrote main into `enjarify` function to be used as a standalone function in other projects.
+- Reimplemented the `main` function to call the `enjarify` function with the command line arguments so CLI is unaffected.
+- Added `enjarify` function to the `__init__.__all__` list to allow for easier importing.
+- Added `enjarify` command entry point
+- Added pyproject.toml and setup.py for packaging and building.
+- Added type hints and optimize for mypyc building (In progress).
+
+
+See the LICENSE file for more details.

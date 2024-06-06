@@ -12,6 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+def read(fname, mode='rb'):
+    with open(fname, mode) as f:
+        return f.read()
+
 def keysToRanges(d, limit):
     starts = sorted(d)
     for s, e in zip(starts, starts[1:] + [limit]):

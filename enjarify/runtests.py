@@ -14,8 +14,9 @@
 
 import zipfile, os, subprocess
 
-from .main import read, translate, writeToJar
+from .main import translate, writeToJar
 from .jvm.optimization import options
+from .util import read
 
 def getStubs():
     with zipfile.ZipFile('tests/stubs/stubs.zip', 'r') as stubs:

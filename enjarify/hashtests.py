@@ -14,8 +14,9 @@
 
 import hashlib, os
 
-from .main import read, translate
+from .main import translate
 from .jvm.optimization import options
+from .util import read
 
 # Hash outputs of all tests in order to easily detect changes between versions
 fullhash = b''

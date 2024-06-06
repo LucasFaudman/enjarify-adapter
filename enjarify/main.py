@@ -12,7 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import zipfile, traceback, argparse, collections
+import zipfile, traceback, argparse
+from collections import OrderedDict
 from pathlib import Path
 from typing import Optional
 
@@ -22,15 +23,20 @@ from .mutf8 import decode
 from .jvm.optimization import options
 
 
-def translate(data, opts, classes=None, errors=None, allowErrors=True, quiet=True):
+def translate(data, 
+              opts: object, 
+              classes: Optional[dict[str, bytes]]=None, 
+              errors: Optional[dict[str, str]]=None, 
+              allowErrors=True, 
+              quiet=True) -> tuple[dict[str, bytes], dict[str, str]]:
     dex = parsedex.DexFile(data)
-    classes = collections.OrderedDict() if classes is None else classes
-    errors = collections.OrderedDict() if errors is None else errors
+    classes = OrderedDict() if classes is None else classes
+    errors = OrderedDict() if errors is None else errors
 
     for cls in dex.classes:
         unicode_name = decode(cls.name) + '.class'
         if unicode_name in classes or unicode_name in errors:
-            print('Warning, duplicate class name', unicode_name)
+            if not quiet: print('Warning, duplicate class name', unicode_name)
             continue
 
         try:
@@ -45,7 +51,7 @@ def translate(data, opts, classes=None, errors=None, allowErrors=True, quiet=Tru
             print(len(classes) + len(errors), 'classes processed')
     return classes, errors
 
-def writeToJar(fname, classes):
+def writeToJar(fname: str|Path, classes: dict[str, bytes]):
     with zipfile.ZipFile(fname, 'w') as out:
         for unicode_name, data in classes.items():
             # Don't bother compressing small files
@@ -54,31 +60,36 @@ def writeToJar(fname, classes):
             info.external_attr = 0o775 << 16 # set Unix file permissions
             out.writestr(info, data, compress_type=compress_type)
             
-def enjarify(inputfile: Path, output: Optional[Path]=None, force=False, fast=False, allowErrors=True, quiet=True) -> Path:
+def enjarify(inputfile: str|Path, output: Optional[str|Path]=None, force=False, fast=False, allowErrors=True, quiet=True) -> Path:
+    inputfile = Path(inputfile) if isinstance(inputfile, str) else inputfile
     if not inputfile.exists():
-        print('Error, input file', str(inputfile), 'does not exist.')
+        if not quiet: print('Error, input file', str(inputfile), 'does not exist.')
         raise FileNotFoundError(inputfile)
     
     # detect existing file error before going to the trouble of translating everything
-    output = output or inputfile.with_suffix('-enjarify.jar')
+    if not output:
+        output = inputfile.with_suffix('.jar')
+    elif isinstance(output, str):
+        output = Path(output)
+            
     if output.exists() and not force:
         if not quiet:
             print('Attempting to write to', str(output))
             print('Error, output file already exists and --force was not specified.')
             print('To overwrite the output file, pass -f or --force.')
-        return output
+        raise FileExistsError(output)
 
     # unzip the input file and get the dex files if it's an .apk or just read the bytes if it's a .dex
     if inputfile.suffix.lower() == '.apk':
         with zipfile.ZipFile(inputfile, 'r') as z:
-            dexs = [z.read(name) for name in z.namelist() if name.endswith('.dex')]            
+            dexs = [z.read(name) for name in z.namelist() if name.startswith('class') and name.endswith('.dex')]            
     else:
         dexs = [inputfile.read_bytes()]
 
     # translate the dex files to java bytecode
     opts = options.NONE if fast else options.PRETTY
-    classes = collections.OrderedDict()
-    errors = collections.OrderedDict()
+    classes: dict[str, bytes] = OrderedDict()
+    errors: dict[str, str] = OrderedDict()
     for data in dexs:
         translate(data, opts=opts, classes=classes, errors=errors, allowErrors=allowErrors)
 

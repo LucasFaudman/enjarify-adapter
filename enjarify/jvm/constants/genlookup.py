@@ -70,13 +70,13 @@ def i2d(x):
     return (exponent << 52) | mantissa
 
 # add if value is shorter then current best
-def add(d, k, v):
+def add(d: dict[int, bytes], k: int, v: bytes):
     if k not in d or len(v) < len(d[k]):
         d[k] = v
 
 if __name__ == "__main__":
     # int constants
-    all_ints = {}
+    all_ints: dict[int, bytes] = {}
 
     # 1 byte ints
     for i in range(-1, 6):
@@ -104,7 +104,7 @@ if __name__ == "__main__":
         add(all_ints, s32(u32(x) >> (y % 32)), all_ints[x] + all_ints[y] + bytes([IUSHR]))
 
     # long constants
-    all_longs = {}
+    all_longs: dict[int, bytes] = {}
     for i in range(0, 2):
         add(all_longs, i, bytes([LCONST_0 + i]))
 
@@ -112,7 +112,7 @@ if __name__ == "__main__":
         add(all_longs, i, all_ints[i] + bytes([I2L]))
 
     # float constants
-    all_floats = {}
+    all_floats: dict[int, bytes] = {}
     for i in range(0, 2):
         add(all_floats, i2f(i), bytes([FCONST_0 + i]))
 
@@ -126,7 +126,7 @@ if __name__ == "__main__":
     add(all_floats, FLOAT_NINF, bytes([FCONST_1, FNEG, FCONST_0, FDIV])) # -Inf
 
     # double constants
-    all_doubles = {}
+    all_doubles: dict[int, bytes] = {}
     for i in range(0, 2):
         add(all_doubles, i2d(i), bytes([DCONST_0 + i]))
 
@@ -158,5 +158,5 @@ if __name__ == "__main__":
     for name, d in zip('INTS LONGS FLOATS DOUBLES'.split(), [all_ints, all_longs, all_floats, all_doubles]):
         print(name + ' = {')
         for k, v in sorted(d.items()):
-            print('    {}: {},'.format(hex(k), v))
+            print('    {!r}: {!r},'.format(hex(k), v))
         print('}')
