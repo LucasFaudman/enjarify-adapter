@@ -91,7 +91,7 @@ def enjarify(inputfile: str|Path, output: Optional[str|Path]=None, force=False, 
     classes: dict[str, bytes] = OrderedDict()
     errors: dict[str, str] = OrderedDict()
     for data in dexs:
-        translate(data, opts=opts, classes=classes, errors=errors, allowErrors=allowErrors)
+        translate(data, opts=opts, classes=classes, errors=errors, allowErrors=allowErrors, quiet=quiet)
 
     # write the java bytecode to a .jar file
     writeToJar(output, classes)
