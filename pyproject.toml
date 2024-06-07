@@ -5,11 +5,11 @@ build-backend = "setuptools.build_meta"
 [project]
 authors = [
     {name = "Lucas Faudman", email = "lucasfaudman@gmail.com"},
-    {name = "2015 Google Inc."},
+    {name = "Google Inc. 2015", email = "google@gmail.com"},
     {name = "Robert Grosse", email = "Storyyeller@github.com"},
 ]
 dynamic = ["classifiers"]
-name = "enjarify"
+name = "enjarify-adapter"
 version = "1.0.0"
 requires-python = ">=3.7"
 readme = "README.md"

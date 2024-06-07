@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 import setuptools_scm
 
 setup(
-    name='enjarify',
+    name='enjarify-adapter',
     version='1.0.0',
     use_scm_version=True,
     setup_requires=['setuptools_scm>=8', 'wheel'],

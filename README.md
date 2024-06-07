@@ -6,7 +6,7 @@ Enjarify is a tool for translating Dalvik bytecode to equivalent Java bytecode. 
 ## Setup
 > Install with pip:
 ```bash
-pip install enjarify
+pip install enjarify-adapter
 ```
 
 ## Usage
@@ -20,7 +20,7 @@ def enjarify(inputfile: str|Path, # Input .dex or .apk file
              output: Optional[str|Path]=None, # Output .jar file.
              force=False, # Force overwrite if output file already exists.
              fast=False, # Speed up translation at the expense readability.
-             allowErrors=True, # Ignore errors without raising Exception.
+             allowErrors=True, # Ignore errors without raising exceptions.
              quiet=True, # Suppress output to stdout.
              inline_consts=True, # Inline constants.
              prune_store_loads=True, # Remove unnecessary store/load pairs.
