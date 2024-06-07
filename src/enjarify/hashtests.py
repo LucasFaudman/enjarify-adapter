@@ -29,7 +29,7 @@ for i in range(1, 8):
 
     for bits in range(256):
         opts = options.Options(*[bool(bits & (1 << b)) for b in range(8)])
-        classes, errors = translate(rawdex, opts=opts, allowErrors=False)
+        classes, errors = translate(rawdex, options=opts, raise_translation_errors=False)
 
         for cls in classes.values():
             print('{:08b}'.format(bits), hashlib.sha256(cls).hexdigest())

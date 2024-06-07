@@ -14,7 +14,7 @@
 
 import zipfile, os, subprocess
 
-from .main import translate, writeToJar
+from .main import translate, write_jar
 from .jvm.optimization import options
 from .util import read
 
@@ -28,10 +28,10 @@ def executeTest(name, opts):
     print('running test', name)
     dir = os.path.join('tests', name)
     rawdex = read(os.path.join(dir, 'classes.dex'), 'rb')
-    classes, errors = translate(rawdex, opts=opts, allowErrors=False)
+    classes, errors = translate(rawdex, options=opts, raise_translation_errors=False)
 
     classes.update(STUB_FILES)
-    writeToJar('out.jar', classes)
+    write_jar('out.jar', classes)
 
     result = subprocess.check_output("java -jar out.jar a.a".split(),
         stderr=subprocess.STDOUT,

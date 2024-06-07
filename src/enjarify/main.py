@@ -21,10 +21,10 @@ from .jvm import writeclass
 from .jvm.optimization import Options
 
 def translate(data: bytes,
-              opts: Options, 
+              options: Options, 
               classes: Optional[dict[str, bytes]]=None, 
               errors: Optional[dict[str, str]]=None, 
-              allowErrors=True, 
+              raise_translation_errors=False, 
               quiet=True,
               print_every=10
               ) -> tuple[dict[str, bytes], dict[str, str]]:
@@ -33,16 +33,16 @@ def translate(data: bytes,
     errors = {} if errors is None else errors
     classes_processed = len(classes) + len(errors)
 
-    for cls in dex.classes:        
-        if (unicode_name := cls.unicodeName()) in classes:
+    for dex_class in dex.classes:        
+        if (unicode_name := dex_class.unicodeName()) in classes:
             if not quiet: print('Warning, duplicate class name', unicode_name)
             continue
 
         try:
-            class_data = writeclass.toClassFile(cls, opts)
+            class_data = writeclass.toClassFile(dex_class, options)
             classes[unicode_name] = class_data
         except Exception:
-            if not allowErrors:
+            if raise_translation_errors:
                 raise
             errors[unicode_name] = traceback.format_exc()
 
@@ -51,7 +51,7 @@ def translate(data: bytes,
             print(f'\r{classes_processed} classes processed', end='')
     return classes, errors
 
-def writeToJar(fname: str|Path, classes: dict[str, bytes]):
+def write_jar(fname: str|Path, classes: dict[str, bytes]):
     with zipfile.ZipFile(fname, 'w') as out:
         for unicode_name, data in classes.items():
             # Don't bother compressing small files
@@ -60,11 +60,10 @@ def writeToJar(fname: str|Path, classes: dict[str, bytes]):
             info.external_attr = 0o775 << 16 # set Unix file permissions
             out.writestr(info, data, compress_type=compress_type)
 
-def enjarify(inputfile: str|Path, 
-             output: Optional[str|Path]=None, 
-             force=False, 
-             fast=False, 
-             allowErrors=True, 
+def enjarify(input_file: str|Path, 
+             output_file: Optional[str|Path]=None, 
+             overwrite=False, 
+             raise_translation_errors=False, 
              quiet=True,
              inline_consts=True, 
              prune_store_loads=True, 
@@ -75,36 +74,34 @@ def enjarify(inputfile: str|Path,
              split_pool=False, 
              delay_consts=False
              ) -> Path:
-    inputfile = Path(inputfile) if isinstance(inputfile, str) else inputfile
-    if not inputfile.exists():
-        if not quiet: print(f'Error, input file {inputfile!s} does not exist.')
-        raise FileNotFoundError(inputfile)
+    input_file = Path(input_file) if isinstance(input_file, str) else input_file
+    if not input_file.exists():
+        message = f'Error, input file {input_file!s} does not exist.'
+        if not quiet: print(message)
+        raise FileNotFoundError(message)
     
     # detect existing file error before going to the trouble of translating everything
-    if not output:
-        output = inputfile.with_suffix('.jar')
-    elif isinstance(output, str):
-        output = Path(output)
+    if not output_file:
+        output_file = input_file.with_suffix('.jar')
+    elif isinstance(output_file, str):
+        output_file = Path(output_file)
             
-    if output.exists() and not force:
+    if output_file.exists() and not overwrite:
         if not quiet:
-            print(f'Attempting to write to {output!s}')
-            print('Error, output file already exists and --force was not specified.')
-            print('To overwrite the output file, pass -f or --force.')
-        raise FileExistsError(output)
+            message = (f'Attempting to write to {output_file!s}\n'
+            'Error, output_file file already exists and --overwrite was not specified. '
+            'To overwrite the output_file file, pass -f or --overwrite.')
+        raise FileExistsError(message)
 
     # unzip the input file and get the dex files if it's an .apk or just read the bytes if it's a .dex
-    if inputfile.suffix.lower() == '.apk':
-        with zipfile.ZipFile(inputfile, 'r') as z:
+    if input_file.suffix.lower() == '.apk':
+        with zipfile.ZipFile(input_file, 'r') as z:
             dexs = [z.read(name) for name in z.namelist() if name.startswith('class') and name.endswith('.dex')]            
     else:
-        dexs = [inputfile.read_bytes()]
+        dexs = [input_file.read_bytes()]
 
     # translate the dex files to java bytecode
-    if fast:
-        options = Options()
-    else:
-        options = Options(inline_consts=inline_consts, 
+    options = Options(inline_consts=inline_consts, 
                           prune_store_loads=prune_store_loads, 
                           copy_propagation=copy_propagation, 
                           remove_unused_regs=remove_unused_regs, 
@@ -113,35 +110,63 @@ def enjarify(inputfile: str|Path,
                           split_pool=split_pool, 
                           delay_consts=delay_consts
                           )
+        
 
     classes: dict[str, bytes] = {}
     errors: dict[str, str] = {}
     for data in dexs:
-        translate(data, opts=options, classes=classes, errors=errors, allowErrors=allowErrors, quiet=quiet)
+        translate(data, options=options, classes=classes, errors=errors, raise_translation_errors=raise_translation_errors, quiet=quiet)
 
     # write the java bytecode to a .jar file
-    writeToJar(output, classes)
+    write_jar(output_file, classes)
 
     # print out any errors that occurred
     if not quiet: 
-        print(f'Output written to {output!s}')
+        print(f'Output written to {output_file!s}')
         for name, error in sorted(errors.items()):
             print(name, error)
         print(f'{len(classes)} classes translated successfully, {len(errors)} classes had errors')
     
-    return output
+    return output_file
 
 
 def main():
     parser = argparse.ArgumentParser(prog='enjarify', description='Translates Dalvik bytecode (.dex or .apk) to Java bytecode (.jar)')
-    parser.add_argument('inputfile', type=Path, help='Input .dex or .apk file')
+    parser.add_argument('INPUT_FILE', type=Path, help='Input .dex or .apk file')
     parser.add_argument('-o', '--output', type=Path, default=None, help='Output .jar file. Default is [input-filename]-enjarify.jar.')
-    parser.add_argument('-f', '--force', action='store_true', help='Force overwrite. If output file already exists, this option is required to overwrite.')
-    parser.add_argument('--fast', action='store_true', help='Speed up translation at the expense of generated bytecode being less readable.')
+    parser.add_argument('-f', '--overwrite', action='store_true', default=False, help='Force overwrite. If output file already exists, this option is required to overwrite.')
+    parser.add_argument('-q', '--quiet', action='store_true', default=False, help='Suppress output messages.')
+    parser.add_argument('--inline-consts', action=argparse.BooleanOptionalAction, default=True, help='Inline constants. Default is True.')
+    parser.add_argument('--prune-store-loads', action=argparse.BooleanOptionalAction, default=True, help='Prune store and load instructions. Default is True.')
+    parser.add_argument('--copy-propagation', action=argparse.BooleanOptionalAction, default=True, help='Enable copy propagation optimization. Default is True.')
+    parser.add_argument('--remove-unused-regs', action=argparse.BooleanOptionalAction, default=True, help='Remove unused registers. Default is True.')
+    parser.add_argument('--dup2ize', action=argparse.BooleanOptionalAction, default=False, help='Enable dup2ize optimization. Default is False.')
+    parser.add_argument('--sort-registers', action=argparse.BooleanOptionalAction, default=False, help='Sort registers. Default is False.')
+    parser.add_argument('--split-pool', action=argparse.BooleanOptionalAction, default=False, help='Split constant pool. Default is False.')
+    parser.add_argument('--delay-consts', action=argparse.BooleanOptionalAction, default=False, help='Delay constants. Default is False.')
+
+    args = parser.parse_args()
+    print(vars(args))
+
+    # Convert argparse Namespace to function arguments
+    output_file = enjarify(
+        input_file=args.INPUT_FILE,
+        output_file=args.output,
+        overwrite=args.overwrite,
+        raise_translation_errors=False,
+        quiet=args.quiet,
+        inline_consts=args.inline_consts,
+        prune_store_loads=args.prune_store_loads,
+        copy_propagation=args.copy_propagation,
+        remove_unused_regs=args.remove_unused_regs,
+        dup2ize=args.dup2ize,
+        sort_registers=args.sort_registers,
+        split_pool=args.split_pool,
+        delay_consts=args.delay_consts
+    )
     args = parser.parse_args()
     
-    # Call enjarify with the parsed arguments and allowErrors=True and quiet=False to leave CLI behavior unchanged
-    enjarify(args.inputfile, args.output, args.force, args.fast, allowErrors=True, quiet=False)
+    print(f'Output written to {output_file!s}')
 
     
 if __name__ == "__main__":

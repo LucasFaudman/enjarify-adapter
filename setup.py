@@ -3,7 +3,7 @@ import setuptools_scm
 
 setup(
     name='enjarify-adapter',
-    version='1.0.0',
+    version='1.0.2',
     use_scm_version=True,
     setup_requires=['setuptools_scm>=8', 'wheel'],
     description='Enjarify is a tool for translating Dalvik bytecode to equivalent Java bytecode. This enjarify-adapter fork exports the `enjarify` method for use in external scripts and is type optimized for building with mypyc.',
