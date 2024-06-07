@@ -13,29 +13,28 @@
 # limitations under the License.
 
 import zipfile, traceback, argparse
-from collections import OrderedDict
 from pathlib import Path
 from typing import Optional
 
-from . import parsedex
+from .parsedex import DexFile
 from .jvm import writeclass
-from .mutf8 import decode
-from .jvm.optimization import options
+from .jvm.optimization import Options
 
-
-def translate(data, 
-              opts: object, 
+def translate(data: bytes,
+              opts: Options, 
               classes: Optional[dict[str, bytes]]=None, 
               errors: Optional[dict[str, str]]=None, 
               allowErrors=True, 
-              quiet=True) -> tuple[dict[str, bytes], dict[str, str]]:
-    dex = parsedex.DexFile(data)
-    classes = OrderedDict() if classes is None else classes
-    errors = OrderedDict() if errors is None else errors
+              quiet=True,
+              print_every=10
+              ) -> tuple[dict[str, bytes], dict[str, str]]:
+    dex = DexFile(data)
+    classes = {} if classes is None else classes
+    errors = {} if errors is None else errors
+    classes_processed = len(classes) + len(errors)
 
-    for cls in dex.classes:
-        unicode_name = decode(cls.name) + '.class'
-        if unicode_name in classes or unicode_name in errors:
+    for cls in dex.classes:        
+        if (unicode_name := cls.unicodeName()) in classes:
             if not quiet: print('Warning, duplicate class name', unicode_name)
             continue
 
@@ -47,8 +46,9 @@ def translate(data,
                 raise
             errors[unicode_name] = traceback.format_exc()
 
-        if not quiet and not (len(classes) + len(errors)) % 1000:
-            print(len(classes) + len(errors), 'classes processed')
+        classes_processed += 1
+        if not quiet and not (classes_processed) % print_every:
+            print(f'\r{classes_processed} classes processed', end='')
     return classes, errors
 
 def writeToJar(fname: str|Path, classes: dict[str, bytes]):
@@ -59,11 +59,25 @@ def writeToJar(fname: str|Path, classes: dict[str, bytes]):
             info = zipfile.ZipInfo(unicode_name)
             info.external_attr = 0o775 << 16 # set Unix file permissions
             out.writestr(info, data, compress_type=compress_type)
-            
-def enjarify(inputfile: str|Path, output: Optional[str|Path]=None, force=False, fast=False, allowErrors=True, quiet=True) -> Path:
+
+def enjarify(inputfile: str|Path, 
+             output: Optional[str|Path]=None, 
+             force=False, 
+             fast=False, 
+             allowErrors=True, 
+             quiet=True,
+             inline_consts=True, 
+             prune_store_loads=True, 
+             copy_propagation=True, 
+             remove_unused_regs=True, 
+             dup2ize=False,
+             sort_registers=False, 
+             split_pool=False, 
+             delay_consts=False
+             ) -> Path:
     inputfile = Path(inputfile) if isinstance(inputfile, str) else inputfile
     if not inputfile.exists():
-        if not quiet: print('Error, input file', str(inputfile), 'does not exist.')
+        if not quiet: print(f'Error, input file {inputfile!s} does not exist.')
         raise FileNotFoundError(inputfile)
     
     # detect existing file error before going to the trouble of translating everything
@@ -74,7 +88,7 @@ def enjarify(inputfile: str|Path, output: Optional[str|Path]=None, force=False, 
             
     if output.exists() and not force:
         if not quiet:
-            print('Attempting to write to', str(output))
+            print(f'Attempting to write to {output!s}')
             print('Error, output file already exists and --force was not specified.')
             print('To overwrite the output file, pass -f or --force.')
         raise FileExistsError(output)
@@ -87,21 +101,33 @@ def enjarify(inputfile: str|Path, output: Optional[str|Path]=None, force=False, 
         dexs = [inputfile.read_bytes()]
 
     # translate the dex files to java bytecode
-    opts = options.NONE if fast else options.PRETTY
-    classes: dict[str, bytes] = OrderedDict()
-    errors: dict[str, str] = OrderedDict()
+    if fast:
+        options = Options()
+    else:
+        options = Options(inline_consts=inline_consts, 
+                          prune_store_loads=prune_store_loads, 
+                          copy_propagation=copy_propagation, 
+                          remove_unused_regs=remove_unused_regs, 
+                          dup2ize=dup2ize,
+                          sort_registers=sort_registers, 
+                          split_pool=split_pool, 
+                          delay_consts=delay_consts
+                          )
+
+    classes: dict[str, bytes] = {}
+    errors: dict[str, str] = {}
     for data in dexs:
-        translate(data, opts=opts, classes=classes, errors=errors, allowErrors=allowErrors, quiet=quiet)
+        translate(data, opts=options, classes=classes, errors=errors, allowErrors=allowErrors, quiet=quiet)
 
     # write the java bytecode to a .jar file
     writeToJar(output, classes)
 
     # print out any errors that occurred
     if not quiet: 
-        print('Output written to', str(output))
+        print(f'Output written to {output!s}')
         for name, error in sorted(errors.items()):
             print(name, error)
-        print('{} classes translated successfully, {} classes had errors'.format(len(classes), len(errors)))
+        print(f'{len(classes)} classes translated successfully, {len(errors)} classes had errors')
     
     return output
 

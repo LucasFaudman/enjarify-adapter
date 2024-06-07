@@ -39,6 +39,7 @@ def visitLinearCode(irdata, visitor):
     return visitor
 
 class NoExceptVisitorBase:
+    def reset(self): self.current = {}
     def visitExceptionRange(self): self.reset()
     def visitJumpTargetOrBranch(self, instr): self.reset()
 
@@ -46,9 +47,6 @@ class ConstInliner(NoExceptVisitorBase):
     def __init__(self):
         self.uses = {}
         self.notmultiused = set()
-        self.current = {}
-
-    def reset(self):
         self.current = {}
 
     def visitReturn(self):
@@ -158,16 +156,16 @@ def genDups(needed, needed_after):
 
 # Range of instruction indexes at which a given register is read (in linear code)
 class UseRange:
-    def __init__(self, uses):
+    def __init__(self, uses: list[int]):
         self.uses = uses
 
     def add(self, i):
         self.uses.append(i)
 
     @property
-    def start(self): return self.uses[0]
+    def start(self) -> int: return self.uses[0]
     @property
-    def end(self): return self.uses[-1]
+    def end(self) -> int: return self.uses[-1]
 
     def subtract(self, other):
         s, e = other.start, other.end

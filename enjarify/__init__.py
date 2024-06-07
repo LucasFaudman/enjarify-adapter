@@ -12,5 +12,5 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .main import enjarify, translate, writeToJar
-__all__ = ["enjarify", "translate", "writeToJar"]
+from .main import enjarify
+__all__ = ["enjarify"]

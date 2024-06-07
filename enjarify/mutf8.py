@@ -45,7 +45,7 @@ def _fixPairs(codes):
         else:
             yield x
 
-def decode(b):
+def decode(b: bytes) -> str:
     try:
         return b.decode('utf8')
     except UnicodeDecodeError:

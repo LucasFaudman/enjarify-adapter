@@ -14,6 +14,7 @@
 
 from . import dalvikformats
 from . import util
+from typing import Iterator
 
 class DalvikInstruction:
     def __init__(self, type_, pos, newpos, opcode, args):
@@ -28,50 +29,50 @@ class DalvikInstruction:
         self.fillarrdata = None
         self.switchdata = None
 
-_it = iter(range(999))
-Nop = next(_it)
-Move = next(_it)
-MoveWide = next(_it)
-MoveResult = next(_it)
-Return = next(_it)
-Const32 = next(_it)
-Const64 = next(_it)
-ConstString = next(_it)
-ConstClass = next(_it)
-MonitorEnter = next(_it)
-MonitorExit = next(_it)
-CheckCast = next(_it)
-InstanceOf = next(_it)
-ArrayLen = next(_it)
-NewInstance = next(_it)
-NewArray = next(_it)
-FilledNewArray = next(_it)
-FillArrayData = next(_it)
-Throw = next(_it)
-Goto = next(_it)
-Switch = next(_it)
-Cmp = next(_it)
-If = next(_it)
-IfZ = next(_it)
+_it: Iterator[int] = iter(range(999))
+Nop: int = next(_it)
+Move: int = next(_it)
+MoveWide: int = next(_it)
+MoveResult: int = next(_it)
+Return: int = next(_it)
+Const32: int = next(_it)
+Const64: int = next(_it)
+ConstString: int = next(_it)
+ConstClass: int = next(_it)
+MonitorEnter: int = next(_it)
+MonitorExit: int = next(_it)
+CheckCast: int = next(_it)
+InstanceOf: int = next(_it)
+ArrayLen: int = next(_it)
+NewInstance: int = next(_it)
+NewArray: int = next(_it)
+FilledNewArray: int = next(_it)
+FillArrayData: int = next(_it)
+Throw: int = next(_it)
+Goto: int = next(_it)
+Switch: int = next(_it)
+Cmp: int = next(_it)
+If: int = next(_it)
+IfZ: int = next(_it)
 
-ArrayGet = next(_it)
-ArrayPut = next(_it)
-InstanceGet = next(_it)
-InstancePut = next(_it)
-StaticGet = next(_it)
-StaticPut = next(_it)
+ArrayGet: int = next(_it)
+ArrayPut: int = next(_it)
+InstanceGet: int = next(_it)
+InstancePut: int = next(_it)
+StaticGet: int = next(_it)
+StaticPut: int = next(_it)
 
-# Invoke = next(_it)
-InvokeVirtual = next(_it)
-InvokeSuper = next(_it)
-InvokeDirect = next(_it)
-InvokeStatic = next(_it)
-InvokeInterface = next(_it)
+# Invoke: int = next(_it)
+InvokeVirtual: int = next(_it)
+InvokeSuper: int = next(_it)
+InvokeDirect: int = next(_it)
+InvokeStatic: int = next(_it)
+InvokeInterface: int = next(_it)
 
 # actual ops for these are defined in jvm/mathops.py
-UnaryOp = next(_it)
-BinaryOp = next(_it)
-BinaryOpConst = next(_it)
+UnaryOp: int = next(_it)
+BinaryOp: int = next(_it)
+BinaryOpConst: int = next(_it)
 
 INVOKE_TYPES = InvokeVirtual, InvokeSuper, InvokeDirect, InvokeStatic, InvokeInterface
 

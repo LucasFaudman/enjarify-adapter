@@ -14,6 +14,8 @@
 from .byteio import Reader
 from .dalvik import parseBytecode
 from .util import signExtend
+from .mutf8 import decode
+
 
 NO_INDEX = 0xFFFFFFFF
 
@@ -196,7 +198,7 @@ class ClassData:
                 methods.append(Method(dex, method_idx, stream.uleb128(), stream.uleb128()))
 
 class DexClass:
-    def __init__(self, dex, base_off, i):
+    def __init__(self, dex, base_off, i) -> None:
         self.dex = dex
         st = dex.stream(base_off + i*32)
 
@@ -211,13 +213,19 @@ class DexClass:
         self.data = None # parse data lazily in parseData()
         self.constant_values_off = st.u32()
 
-    def parseData(self):
+    def parseData(self) -> None:
         if self.data is None:
             self.data = ClassData(self.dex, self.data_off)
             if self.constant_values_off:
                 stream = self.dex.stream(self.constant_values_off)
                 for field in self.data.fields[:stream.uleb128()]:
                     field.constant_value = encodedValue(self.dex, stream)
+
+    def unicodeName(self) -> str:
+        return decode(self.name) + '.class'
+
+    def __hash__(self) -> int:
+        return hash(self.name)
 
 class SizeOff:
     def __init__(self, stream):
@@ -259,10 +267,11 @@ class DexFile:
         stream.uleb128() # ignore decoded length
         return stream.readCStr()
 
-    def type(self, i):
+    def type(self, i) -> bytes:
         if 0 <= i < NO_INDEX:
             str_idx = self.stream(self.type_ids.off + i*4).u32()
             return self.string(str_idx)
+        return bytes()
 
     def clsType(self, i):
         # Can be either class _name_ or array _descriptor_

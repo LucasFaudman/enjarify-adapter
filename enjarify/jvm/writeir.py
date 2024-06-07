@@ -188,7 +188,7 @@ class IRWriter:
 
         self.iblocks = {}
 
-        self.flat_instructions = None
+        self.flat_instructions = []
         self.excepts = []
         self.labels = {}
         self.initial_args = None
@@ -240,7 +240,8 @@ class IRWriter:
             instructions.append(ir.Goto(target))
 
         self.flat_instructions = instructions
-        self.iblocks = self.exception_redirects = None
+        self.iblocks.clear()
+        self.exception_redirects.clear()
 
     def replaceInstrs(self, replace):
         if replace:
@@ -608,7 +609,7 @@ def writeBytecode(pool, method, opts):
 
         for ctype, handler_pos in all_handlers[instr]:
             # If handler doesn't use the caught exception, we need to redirect to a pop instead
-            if instr_d.get(handler_pos).type != dalvik.MoveResult:
+            if instr_d[handler_pos].type != dalvik.MoveResult:
                 target = writer.addExceptionRedirect(handler_pos)
             else:
                 target = writer.labels[handler_pos]
