@@ -28,7 +28,7 @@ enjarify = "enjarify.main:main"
 [tool.setuptools]
 
 [tool.setuptools_scm]
-version_file = "enjarify/_version.py"
+version_file = "src/enjarify/_version.py"
 
 [tool.black]
 line-length = 120
